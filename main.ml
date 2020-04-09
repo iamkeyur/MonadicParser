@@ -42,12 +42,19 @@ let parse (Parser p) inp = p inp;;
 
 let bind p f =
   Parser (fun inp ->
-      match run p inp with
-      | Success(result', input') -> run (f result') input'
-      | Failure error -> Failure error )
+      match parse p inp with
+      | Success(result', input') -> parse (f result') input'
+      | Failure error -> Failure error)
 
-let (let*) = bind;; 
     
+let (<|>) p f =
+  Parser (fun inp ->
+      match parse p inp with
+      | Success(_) as res -> res
+      | Failure _ -> parse f inp)
+    
+let (let*) = bind;; 
+  
 let sat pred =
   let* x = item in
   if pred x then res x else zero;;
@@ -55,8 +62,10 @@ let sat pred =
 let charParser x = sat ((=) x);;
 
 let xx = charParser 'A';;
+let yy = charParser 'C';;
+parse (yy <|> xx) "ABC";;
 
-parse (charParser 'A') "ABC";;
+
 
   (*
     let inputZBC = "A";; 

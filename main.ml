@@ -2,6 +2,8 @@ type 'a result =
   | Success of 'a
   | Failure of string
   
+type 't parser = Parser of (string -> ('t * string) result)
+
 let explode s =
   let rec expl i l =
     if i < 0 then l else
@@ -10,34 +12,64 @@ let explode s =
 
 let implode l = String.concat "" (List.map (String.make 1) l);;
 
-(*
-  let implode l =
-    let result = Bytes.create (List.length l) in 
-    let rec imp i = function
-      | [] -> result
-      | c :: l -> Bytes.set result i c; imp (i + 1) l in
-    imp 0 l;;
-
-
-  let pchar charToMatch str =
-    match explode str with
+let pchar charToMatch =
+  let ret input= 
+    match explode input with
     | [] -> Failure "Empty"
-    | h::t -> if h = charToMatch
-        then Success(charToMatch, implode t)
-        else Failure "Not Found";;
-  *)
+    | h::t -> match compare h charToMatch with
+      | 0 -> Success(charToMatch, implode t)
+      | _ -> Failure "Not Found" in
+  Parser ret;;
+  
 
-let pchar charToMatch str =
-  match explode str with
-  | [] -> Failure "Empty"
-  | h::t -> match compare h charToMatch with
-    | 0 -> Success(charToMatch, implode t)
-    | _ -> Failure "Not Found";;
-             
-             
-let inputZBC = "ABC";; 
-pchar 'A' inputZBC;;
+let res v =
+  Parser (fun x -> Success(v, x))
 
-let parseB = pchar 'B';;
+let item =
+  let ret inp = match explode inp with
+    | [] -> Failure "Empty"
+    | h::t -> Success(h, implode t) in
+  Parser ret;;
+                
+let zero =
+  Parser (fun x -> Failure "Zero Parser")
 
-parseB "BC";;
+let run parser input = 
+  let (Parser innerFn) = parser in
+  innerFn input;; 
+
+let parse (Parser p) inp = p inp;;
+
+let bind p f =
+  Parser (fun inp ->
+      match run p inp with
+      | Success(result', input') -> run (f result') input'
+      | Failure error -> Failure error )
+
+let (let*) = bind;; 
+    
+let sat pred =
+  let* x = item in
+  if pred x then res x else zero;;
+
+let charParser x = sat ((=) x);;
+
+let xx = charParser 'A';;
+
+parse (charParser 'A') "ABC";;
+
+  (*
+    let inputZBC = "A";; 
+    let parseA = pchar 'A';;
+    run parseA "ABC";;
+
+    let parseAny = res 'A';;
+    run parseAny "ABC";;
+  
+    let itemParse = item;;
+    run itemParse "ABC";;
+
+    let zeroParser = zero;;
+    run zeroParser "ABC";;
+*)
+

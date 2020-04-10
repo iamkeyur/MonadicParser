@@ -56,8 +56,8 @@ let (let*) = (>>=);;
 (* p <*> f applies the parsers p and f in sequence
 and returns the results in a tuple. *)
 let (<*>) p f =
-  (*p1 >>= fun a ->
-    p2 >>= fun b -> preturn (a, b)*)
+  (* p >>= fun a ->
+     f >>= fun b -> res (a, b) *)
   let* x = p in
   let* y = f in
   res (x,y) 
@@ -69,7 +69,16 @@ let ( *>) p f = p >>= fun _ -> f
 (* p <* f applies the parsers p and f in sequence
 and returns the result of p *)
 let ( <*) p f = p >>= fun x -> f >>= fun _ -> res x
-      
+    
+let (<~>) x xs = x >>= fun r -> xs >>= fun rs -> res (r :: rs)
+
+let (|>>) p f = p >>= fun x -> res (f x)
+    
+let rec many p = 
+  (p >>= fun r -> many p |>> fun rs -> r::rs) <|> res []
+    
+let many1 x = x <~> many x
+
 let sat pred =
   let* x = item in
   if pred x then res x else zero;;
@@ -78,22 +87,14 @@ let charParser x = sat ((=) x);;
 
 let xx = charParser 'A';;
 let yy = charParser 'B';;
-parse (yy <|> xx) "ABC";;
 
-let parseAB = xx <* yy;;
-parse parseAB "ABC";;
-
-  (*
-    let inputZBC = "A";; 
-    let parseA = pchar 'A';;
-    run parseA "ABC";;
-
-    let parseAny = res 'A';;
-    run parseAny "ABC";;
-  
-    let itemParse = item;;
-    run itemParse "ABC";;
-
-    let zeroParser = zero;;
-    run zeroParser "ABC";;
+(*
+  parse (yy <|> xx) "ABC";;
+  let parseAB = xx <* yy;;
+  parse parseAB "ABC";;
 *)
+
+parse (xx >>= fun _ -> yy) "ABC";; 
+let tt = many xx;;
+parse tt "AAA";;
+

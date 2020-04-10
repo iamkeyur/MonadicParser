@@ -21,7 +21,6 @@ let pchar charToMatch =
       | _ -> Failure "Not Found" in
   Parser ret;;
   
-
 let res v =
   Parser (fun x -> Success(v, x))
 
@@ -40,12 +39,11 @@ let run parser input =
 
 let parse (Parser p) inp = p inp;;
 
-let bind p f =
+let (>>=) p f =
   Parser (fun inp ->
       match parse p inp with
       | Success(result', input') -> parse (f result') input'
-      | Failure error -> Failure error)
-
+      | Failure error -> Failure error) 
 
 let (<|>) p f =
   Parser (fun inp ->
@@ -53,15 +51,25 @@ let (<|>) p f =
       | Success(_) as res -> res
       | Failure _ -> parse f inp)
     
-let (let*) = bind;; 
+let (let*) = (>>=);; 
   
-let andThen p f =
-  (* p >>= fun x -> f >>= fun y -> res (x,y) *)
+(* p <*> f applies the parsers p and f in sequence
+and returns the results in a tuple. *)
+let (<*>) p f =
+  (*p1 >>= fun a ->
+    p2 >>= fun b -> preturn (a, b)*)
   let* x = p in
   let* y = f in
   res (x,y) 
     
-    
+(* p *> f applies the parsers p and f in sequence
+and returns the result of f *)
+let ( *>) p f = p >>= fun _ -> f 
+  
+(* p <* f applies the parsers p and f in sequence
+and returns the result of p *)
+let ( <*) p f = p >>= fun x -> f >>= fun _ -> res x
+      
 let sat pred =
   let* x = item in
   if pred x then res x else zero;;
@@ -72,9 +80,8 @@ let xx = charParser 'A';;
 let yy = charParser 'B';;
 parse (yy <|> xx) "ABC";;
 
-let parseAB = (andThen xx yy);;
+let parseAB = xx <* yy;;
 parse parseAB "ABC";;
-
 
   (*
     let inputZBC = "A";; 
@@ -90,4 +97,3 @@ parse parseAB "ABC";;
     let zeroParser = zero;;
     run zeroParser "ABC";;
 *)
-

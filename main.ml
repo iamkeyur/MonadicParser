@@ -82,10 +82,17 @@ let pipe2 p1 p2 f =
   let* y = p2 in
   res (f x y)
     
-  
-let rec many p = 
-  (p >>= fun r -> many p |>> fun rs -> r::rs) <|> res []
+(*  
+  let rec many p = 
+    (p >>= fun r -> many p |>> fun rs -> r::rs) <|> res []
+*)
     
+(* alternative implementation of many *)
+let rec many p = 
+  (let* x = p in
+   let* y = many p in
+   res (x::y)) <|> res []
+  
 let many1 x = x <~> many x
 
 let sat pred =
@@ -94,13 +101,15 @@ let sat pred =
 
 let charParser x = sat ((=) x);;
 
-let xx = charParser '1';;
-let yy = charParser '2';;
-
-parse (xx <*> yy |>> fun (x, y) -> x::y::[]) "123";;
-
-parse (pipe2 xx yy (fun x y -> x::y::[])) "123";;
-(* parse (xx >>= fun _ -> yy) "ABC";; 
- let tt = many xx;;
- parse tt "AAA";;
+(*
+  let xx = charParser '1';;
+  let yy = charParser '2';; 
+  parse (xx <*> yy |>> fun (x, y) -> x::y::[]) "123";; 
+  parse (pipe2 xx yy (fun x y -> x::y::[])) "123";;
 *)
+let xx = charParser 'A';;
+let yy = charParser 'B';; 
+parse (xx >>= fun _ -> yy) "ABC";; 
+let tt = many xx;;
+parse tt "B";;
+parse (many1 xx) "B";;

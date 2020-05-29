@@ -57,7 +57,8 @@ let (let*) = (>>=);;
 and returns the results in a tuple. *)
 let (<*>) p f =
   (* p >>= fun a ->
-     f >>= fun b -> res (a, b) *)
+     f >>= fun b -> 
+     res (a, b) *)
   let* x = p in
   let* y = f in
   res (x,y) 
@@ -72,8 +73,16 @@ let ( <*) p f = p >>= fun x -> f >>= fun _ -> res x
     
 let (<~>) x xs = x >>= fun r -> xs >>= fun rs -> res (r :: rs)
 
-let (|>>) p f = p >>= fun x -> res (f x)
+(* map function f on result produced by parser p*)    
+let (|>>) p f = p >>= fun x -> res (f x) 
     
+    
+let pipe2 p1 p2 f = 
+  let* x = p1 in
+  let* y = p2 in
+  res (f x y)
+    
+  
 let rec many p = 
   (p >>= fun r -> many p |>> fun rs -> r::rs) <|> res []
     
@@ -85,16 +94,13 @@ let sat pred =
 
 let charParser x = sat ((=) x);;
 
-let xx = charParser 'A';;
-let yy = charParser 'B';;
+let xx = charParser '1';;
+let yy = charParser '2';;
 
-(*
-  parse (yy <|> xx) "ABC";;
-  let parseAB = xx <* yy;;
-  parse parseAB "ABC";;
+parse (xx <*> yy |>> fun (x, y) -> x::y::[]) "123";;
+
+parse (pipe2 xx yy (fun x y -> x::y::[])) "123";;
+(* parse (xx >>= fun _ -> yy) "ABC";; 
+ let tt = many xx;;
+ parse tt "AAA";;
 *)
-
-parse (xx >>= fun _ -> yy) "ABC";; 
-let tt = many xx;;
-parse tt "AAA";;
-

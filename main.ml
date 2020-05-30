@@ -101,6 +101,33 @@ let sat pred =
 
 let charParser x = sat ((=) x);;
 
+let rec reduce l op = match l with
+  | [] -> res []
+  | h::t -> pipe2 h (reduce t op) op
+              
+let anyOf chars = explode chars
+                  |> fun l -> sat (fun x -> List.mem x l)
+
+let spaces = many (anyOf " \n\r");;
+
+(*
+   
+   let is_int s =
+  try ignore (int_of_string s); true
+  with _ -> false
+ 
+let is_float s =
+  try ignore (float_of_string s); true
+  with _ -> false
+ 
+let is_numeric s = is_int s || is_float s
+   *)
+let is_alpha = function 'a' .. 'z' | 'A' .. 'Z' -> true | _ -> false;;
+let is_digit = function '0' .. '9' -> true | _ -> false;;
+
+let digit = sat is_digit;;
+parse digit "1";;
+parse spaces "\n\n";;
 (*
   let xx = charParser '1';;
   let yy = charParser '2';; 
@@ -109,7 +136,23 @@ let charParser x = sat ((=) x);;
 *)
 let xx = charParser 'A';;
 let yy = charParser 'B';; 
-parse (xx >>= fun _ -> yy) "ABC";; 
+let zz = charParser 'C';;
+
+let ll = xx::yy::zz::[];;
+
+let cons head tail = head::tail;;
+
+let rec seq l = match l with
+  | [] -> res []
+  | h::t -> pipe2 h (seq t) cons
+  
+let string s = explode s
+               |> List.map(fun c -> charParser c)
+               |> seq
+               |>> implode;;
+
+parse (string "Patel") "PatelKeyur";;
+
 let tt = many xx;;
 parse tt "B";;
 parse (many1 xx) "B";;

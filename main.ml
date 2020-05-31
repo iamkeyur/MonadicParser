@@ -55,10 +55,7 @@ let (let*) = (>>=);;
   
 (* p <*> f applies the parsers p and f in sequence
 and returns the results in a tuple. *)
-let (<*>) p f =
-  (* p >>= fun a ->
-     f >>= fun b -> 
-     res (a, b) *)
+let (<*>) p f = 
   let* x = p in
   let* y = f in
   res (x,y) 
@@ -76,6 +73,7 @@ let (<~>) x xs = x >>= fun r -> xs >>= fun rs -> res (r :: rs)
 (* map function f on result produced by parser p*)    
 let (|>>) p f = p >>= fun x -> res (f x) 
   
+let opt p = (p |>> (fun x -> Some x)) <|> res None
 let optional p = (p >>= fun _ -> res ()) <|> res ();;
 
 let pipe2 p1 p2 f = 
@@ -111,30 +109,13 @@ let anyOf chars = explode chars
 
 let spaces = many (anyOf " \n\r");;
 
-(*
-   
-   let is_int s =
-  try ignore (int_of_string s); true
-  with _ -> false
- 
-let is_float s =
-  try ignore (float_of_string s); true
-  with _ -> false
- 
-let is_numeric s = is_int s || is_float s
-                               *)
 let is_alpha = function 'a' .. 'z' | 'A' .. 'Z' -> true | _ -> false;;
 let is_digit = function '0' .. '9' -> true | _ -> false;;
 
 let digit = sat is_digit;;
 parse digit "1";;
 parse spaces "\n\n";;
-(*
-  let xx = charParser '1';;
-  let yy = charParser '2';; 
-  parse (xx <*> yy |>> fun (x, y) -> x::y::[]) "123";; 
-  parse (pipe2 xx yy (fun x y -> x::y::[])) "123";;
-*)
+
 let xx = charParser 'A';;
 let yy = charParser 'B';; 
 let zz = charParser 'C';;
@@ -159,17 +140,46 @@ parse tt "B";;
 parse (many1 xx) "B";;
 
 (* RFC ISO8601 Duration *)
-type durSecond = DurSecond of int | None 
-type durMinute = DurMinute of int * durSecond | None
-type durHour   = DurHour of int * durMinute
-
-
-let x = DurMinute (5,DurSecond 5);;
-
 let point = charParser '.';;
-let parseNumberWithDecimal = ((many digit |>> implode) <*> (optional point) *> (many digit |>> implode)) 
-                             |>> fun (x, y) -> match y with
-                             | "" -> x
-                             | _ -> String.concat "." [x ; y];;
+let parseDecimal = ((many digit |>> implode) <*> (optional point) *> (many digit |>> implode)) 
+                   |>> fun (x, y) -> match y with
+                   | "" -> x
+                   | _ -> String.concat "." [x ; y];;
+parse parseDecimal "11.2332323";;
+  
+type durSecond = DurSecond of int
+type durMinute = DurMinute of int * durSecond option
+type durHour   = DurHour of int * durMinute option 
+type durTime   = DurTimeHour of durHour 
+               | DurTimeMinute of durMinute 
+               | DurTimeSecond of durSecond
+type durDay = DurDay of int
+type durWeek = DurWeek of int
+type durMonth = DurMonth of int * durDay option
+type durYear = DurYear of int * durMonth option 
+type durDate   = DurDateDay of durDay  * durTime option
+               | DurDateMonth of durMonth * durTime option
+               | DurDateYear  of durYear  * durTime option 
+type duration  = DurationDate of durDate
+               | DurationTime of durTime
+               | DurationWeek of durWeek            
 
-parse parseNumberWithDecimal "11.2332323";;
+let durSecond = parseDecimal <* charParser 'S' 
+                |>> int_of_string 
+                |>> (fun x -> DurSecond x);;
+
+let durMinute = ((parseDecimal <* charParser 'M') 
+                 |>> int_of_string) 
+                <*> (opt durSecond) 
+                |>> fun (x,y) -> DurMinute(x,y);;
+
+let durHour = ((parseDecimal <* charParser 'H')
+               |>> int_of_string)
+              <*> opt durMinute
+              |>> fun (x,y) -> DurHour(x,y);;
+
+let durTime = ((charParser 'T') 
+               *> ((durHour |>> (fun x -> DurTimeHour x))
+                   <|> (durMinute |>> (fun x -> DurTimeMinute x))
+                   <|> (durSecond |>> (fun x -> DurTimeSecond x))));;
+parse durTime "T12M5S";;

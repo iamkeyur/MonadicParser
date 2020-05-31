@@ -75,8 +75,9 @@ let (<~>) x xs = x >>= fun r -> xs >>= fun rs -> res (r :: rs)
 
 (* map function f on result produced by parser p*)    
 let (|>>) p f = p >>= fun x -> res (f x) 
-    
-    
+  
+let optional p = (p >>= fun _ -> res ()) <|> res ();;
+
 let pipe2 p1 p2 f = 
   let* x = p1 in
   let* y = p2 in
@@ -121,7 +122,7 @@ let is_float s =
   with _ -> false
  
 let is_numeric s = is_int s || is_float s
-   *)
+                               *)
 let is_alpha = function 'a' .. 'z' | 'A' .. 'Z' -> true | _ -> false;;
 let is_digit = function '0' .. '9' -> true | _ -> false;;
 
@@ -156,3 +157,19 @@ parse (string "Patel") "PatelKeyur";;
 let tt = many xx;;
 parse tt "B";;
 parse (many1 xx) "B";;
+
+(* RFC ISO8601 Duration *)
+type durSecond = DurSecond of int | None 
+type durMinute = DurMinute of int * durSecond | None
+type durHour   = DurHour of int * durMinute
+
+
+let x = DurMinute (5,DurSecond 5);;
+
+let point = charParser '.';;
+let parseNumberWithDecimal = ((many digit |>> implode) <*> (optional point) *> (many digit |>> implode)) 
+                             |>> fun (x, y) -> match y with
+                             | "" -> x
+                             | _ -> String.concat "." [x ; y];;
+
+parse parseNumberWithDecimal "11.2332323";;
